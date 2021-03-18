@@ -1,0 +1,16 @@
+[package]
+name = "static-files"
+version = "0.0.1"
+authors = ["Alexander Korolev <alexander.korolev.germany@gmail.com>"]
+edition = "2018"
+categories = []
+description = """
+The library to help automate static resource collection.
+"""
+homepage = "https://github.com/static-files-rs/static-files"
+keywords = []
+license = "Unlicense OR MIT"
+readme = "README.md"
+repository = "https://github.com/static-files-rs/static-files"
+
+[dependencies]
