@@ -1,19 +1,3 @@
-/*!
-# static-files description
-
-## Features
-
-## Usage
-
-Add dependency to Cargo.toml:
-
-```toml
-[dependencies]
-static-files = "0.1"
-```
-
-*/
-
 mod mods;
 
 pub use mods::{
