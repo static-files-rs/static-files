@@ -14,10 +14,10 @@ static-files = "0.1"
 
 */
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+mod mods;
+
+pub use mods::{
+    generate_resources, generate_resources_mapping, generate_resources_sets, new_resource,
+    npm_resource_dir, resource_dir, NpmBuild, Resource, ResourceDir, SetSplitStrategie,
+    SplitByCount,
+};
