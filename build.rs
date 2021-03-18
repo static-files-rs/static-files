@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 #![doc(html_no_source)]
 mod mods {
     include!("src/mods/mod.rs");
@@ -5,7 +6,7 @@ mod mods {
 
 use std::{env, path::Path};
 
-use mods::{generate_resources_mapping, resource_dir, generate_resources_sets, SplitByCount};
+use mods::{generate_resources_mapping, generate_resources_sets, resource_dir, SplitByCount};
 
 fn main() -> std::io::Result<()> {
     resource_dir("./tests").build()?;
