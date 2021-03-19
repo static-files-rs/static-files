@@ -29,7 +29,7 @@ pub fn new_resource(data: &'static [u8], modified: u64, mime_type: &'static str)
 /// // Generate resources for ./tests dir with file name generated.rs
 /// // stored in path defined by OUT_DIR environment variable.
 /// // Function name is 'generate'
-/// use actix_web_static_files::resource_dir;
+/// use static_files::resource_dir;
 ///
 /// resource_dir("./tests").build().unwrap();
 /// ```
@@ -93,7 +93,7 @@ pub(crate) const DEFAULT_VARIABLE_NAME: &str = "r";
 /// ```rust
 ///
 /// use std::{env, path::Path};
-/// use actix_web_static_files::generate_resources;
+/// use static_files::generate_resources;
 ///
 /// fn main() {
 ///     let out_dir = env::var("OUT_DIR").unwrap();
@@ -104,7 +104,6 @@ pub(crate) const DEFAULT_VARIABLE_NAME: &str = "r";
 ///
 /// in `main.rs`:
 /// ```rust
-/// use actix_web::App;
 ///
 /// include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 ///
@@ -112,12 +111,6 @@ pub(crate) const DEFAULT_VARIABLE_NAME: &str = "r";
 ///     let generated_file = generate();
 ///
 ///     assert_eq!(generated_file.len(), 4);
-///
-///     let app = App::new()
-///         .service(actix_web_static_files::ResourceFiles::new(
-///            "/static",
-///            generated_file,
-///        ));
 /// }
 /// ```
 pub fn generate_resources<P: AsRef<Path>, G: AsRef<Path>>(
@@ -149,7 +142,7 @@ pub fn generate_resources<P: AsRef<Path>, G: AsRef<Path>>(
 /// ```rust
 ///
 /// use std::{env, path::Path};
-/// use actix_web_static_files::generate_resources_mapping;
+/// use static_files::generate_resources_mapping;
 ///
 /// fn main() {
 ///     let out_dir = env::var("OUT_DIR").unwrap();
@@ -162,8 +155,7 @@ pub fn generate_resources<P: AsRef<Path>, G: AsRef<Path>>(
 /// ```rust
 /// use std::collections::HashMap;
 ///
-/// use actix_web::App;
-/// use actix_web_static_files::{Resource, ResourceFiles};
+/// use static_files::Resource;
 ///
 /// fn generate_mapping() -> HashMap<&'static str, Resource> {
 ///   include!(concat!(env!("OUT_DIR"), "/generated_mapping.rs"))
@@ -174,11 +166,6 @@ pub fn generate_resources<P: AsRef<Path>, G: AsRef<Path>>(
 ///
 ///     assert_eq!(generated_file.len(), 4);
 ///
-///     let app = App::new()
-///         .service(ResourceFiles::new(
-///            "/static",
-///            generated_file,
-///        ));
 /// }
 /// ```
 pub fn generate_resources_mapping<P: AsRef<Path>, G: AsRef<Path>>(
@@ -271,7 +258,7 @@ pub(crate) fn generate_resource_insert<P: AsRef<Path>, W: Write>(
 pub(crate) fn generate_function_header<F: Write>(f: &mut F, fn_name: &str) -> io::Result<()> {
     writeln!(
         f,
-        "#[allow(clippy::unreadable_literal)] pub fn {}() -> ::std::collections::HashMap<&'static str, ::actix_web_static_files::Resource> {{",
+        "#[allow(clippy::unreadable_literal)] pub fn {}() -> ::std::collections::HashMap<&'static str, ::static_files::Resource> {{",
         fn_name
     )
 }
@@ -283,7 +270,7 @@ pub(crate) fn generate_function_end<F: Write>(f: &mut F) -> io::Result<()> {
 pub(crate) fn generate_uses<F: Write>(f: &mut F) -> io::Result<()> {
     writeln!(
         f,
-        "use ::actix_web_static_files::new_resource as n;
+        "use ::static_files::new_resource as n;
 use ::std::include_bytes as i;",
     )
 }

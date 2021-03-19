@@ -26,7 +26,7 @@ pub fn npm_resource_dir<P: AsRef<Path>>(resource_dir: P) -> io::Result<ResourceD
 /// Add `build.rs` with call to bundle resources:
 ///
 /// ```rust#ignore
-/// use actix_web_static_files::NpmBuild;
+/// use static_files::NpmBuild;
 ///
 /// fn main() {
 ///     NpmBuild::new("./web")
@@ -40,25 +40,7 @@ pub fn npm_resource_dir<P: AsRef<Path>>(resource_dir: P) -> io::Result<ResourceD
 /// Include generated code in `main.rs`:
 ///
 /// ```rust#ignore
-/// use actix_web::{App, HttpServer};
-/// use actix_web_static_files;
-///
-/// use std::collections::HashMap;
-///
 /// include!(concat!(env!("OUT_DIR"), "/generated.rs"));
-///
-/// #[actix_rt::main]
-/// async fn main() -> std::io::Result<()> {
-///     HttpServer::new(move || {
-///         let generated = generate();
-///         App::new().service(actix_web_static_files::ResourceFiles::new(
-///             "/", generated,
-///         ))
-///     })
-///     .bind("127.0.0.1:8080")?
-///     .run()
-///     .await
-/// }
 /// ```
 #[derive(Default, Debug)]
 pub struct NpmBuild {

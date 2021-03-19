@@ -55,7 +55,7 @@ impl SetSplitStrategie for SplitByCount {
 /// ```rust
 ///
 /// use std::{env, path::Path};
-/// use actix_web_static_files::sets::{generate_resources_sets, SplitByCount};
+/// use static_files::sets::{generate_resources_sets, SplitByCount};
 ///
 /// fn main() {
 ///     let out_dir = env::var("OUT_DIR").unwrap();
@@ -74,8 +74,6 @@ impl SetSplitStrategie for SplitByCount {
 ///
 /// in `main.rs`:
 /// ```rust
-/// use actix_web::App;
-///
 /// include!(concat!(env!("OUT_DIR"), "/generated_sets.rs"));
 ///
 /// fn main() {
@@ -83,11 +81,6 @@ impl SetSplitStrategie for SplitByCount {
 ///
 ///     assert_eq!(generated_file.len(), 4);
 ///
-///     let app = App::new()
-///         .service(actix_web_static_files::ResourceFiles::new(
-///            "/static",
-///            generated_file,
-///        ));
 /// }
 /// ```
 pub fn generate_resources_sets<P, G, S>(
@@ -119,8 +112,8 @@ where
     writeln!(
         module_file,
         "
-use actix_web_static_files::Resource;
-use std::collections::HashMap;"
+use ::static_files::Resource;
+use ::std::collections::HashMap;"
     )?;
 
     let mut modules_count = 1;
