@@ -1,3 +1,6 @@
+/*!
+Resource definition and single module based generation.
+ */
 use path_slash::PathExt;
 use std::{
     env,
@@ -30,7 +33,7 @@ pub fn new_resource(data: &'static [u8], modified: u64, mime_type: &'static str)
 /// // Generate resources for ./tests dir with file name generated.rs
 /// // stored in path defined by OUT_DIR environment variable.
 /// // Function name is 'generate'
-/// use static_files::resource_dir;
+/// use static_files::resource::resource_dir;
 ///
 /// resource_dir("./tests").build().unwrap();
 /// ```
@@ -104,7 +107,7 @@ pub(crate) const DEFAULT_VARIABLE_NAME: &str = "r";
 /// ```rust
 ///
 /// use std::{env, path::Path};
-/// use static_files::generate_resources;
+/// use static_files::resource::generate_resources;
 ///
 /// fn main() {
 ///     let out_dir = env::var("OUT_DIR").unwrap();
@@ -153,7 +156,7 @@ pub fn generate_resources<P: AsRef<Path>, G: AsRef<Path>>(
 /// ```rust
 ///
 /// use std::{env, path::Path};
-/// use static_files::generate_resources_mapping;
+/// use static_files::resource::generate_resources_mapping;
 ///
 /// fn main() {
 ///     let out_dir = env::var("OUT_DIR").unwrap();
@@ -281,7 +284,7 @@ pub(crate) fn generate_function_end<F: Write>(f: &mut F) -> io::Result<()> {
 pub(crate) fn generate_uses<F: Write>(f: &mut F) -> io::Result<()> {
     writeln!(
         f,
-        "use ::static_files::new_resource as n;
+        "use ::static_files::resource::new_resource as n;
 use ::std::include_bytes as i;",
     )
 }

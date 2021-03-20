@@ -6,7 +6,10 @@ mod mods {
 
 use std::{env, path::Path};
 
-use mods::{generate_resources_mapping, generate_resources_sets, resource_dir, SplitByCount};
+use mods::{
+    resource::{generate_resources_mapping, resource_dir},
+    sets::{generate_resources_sets, SplitByCount},
+};
 
 fn main() -> std::io::Result<()> {
     resource_dir("./tests").build()?;

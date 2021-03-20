@@ -1,10 +1,13 @@
+/*!
+`npm` support.
+*/
 use std::{
     io,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
-use super::ResourceDir;
+use super::resource::ResourceDir;
 
 #[cfg(not(windows))]
 const NPM_CMD: &str = "npm";
