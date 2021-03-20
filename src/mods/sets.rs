@@ -1,3 +1,6 @@
+/*!
+Support for module based generations. Use it for large data sets (more than 128 Mb).
+ */
 use std::{
     fs::{self, File, Metadata},
     io::{self, Write},
@@ -19,6 +22,7 @@ pub trait SetSplitStrategie {
     fn reset(&mut self);
 }
 
+/// Split modules by files count.
 pub struct SplitByCount {
     current: usize,
     max: usize,
@@ -46,6 +50,7 @@ impl SetSplitStrategie for SplitByCount {
 
 /// Generate resources for `project_dir` using `filter`
 /// breaking them into separate modules using `set_split_strategie` (recommended for large > 128 Mb setups).
+///
 /// Result saved in module named `module_name`. It exports
 /// only one function named `fn_name`. It is then exported from
 /// `generated_filename`. `generated_filename` is also used to determine

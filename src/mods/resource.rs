@@ -14,6 +14,7 @@ pub struct Resource {
     pub mime_type: &'static str,
 }
 
+/// Used internally in generated functions.
 #[inline]
 pub fn new_resource(data: &'static [u8], modified: u64, mime_type: &'static str) -> Resource {
     Resource {
@@ -40,6 +41,12 @@ pub fn resource_dir<P: AsRef<Path>>(resource_dir: P) -> ResourceDir {
     }
 }
 
+/// Resource dir.
+///
+/// A builder structure allows to change default settings for:
+/// - file filter
+/// - generated file name
+/// - generated function name
 #[derive(Default)]
 pub struct ResourceDir {
     pub(crate) resource_dir: PathBuf,
@@ -49,6 +56,7 @@ pub struct ResourceDir {
 }
 
 impl ResourceDir {
+    /// Generates resources for current configuration.
     pub fn build(&self) -> io::Result<()> {
         let generated_filename = self.generated_filename.clone().unwrap_or_else(|| {
             let out_dir = env::var("OUT_DIR").unwrap();
@@ -68,16 +76,19 @@ impl ResourceDir {
         )
     }
 
+    /// Sets the file filter.
     pub fn with_filter(&mut self, filter: fn(p: &Path) -> bool) -> &mut Self {
         self.filter = Some(filter);
         self
     }
 
+    /// Sets the generated filename.
     pub fn with_generated_filename<P: AsRef<Path>>(&mut self, generated_filename: P) -> &mut Self {
         self.generated_filename = Some(generated_filename.as_ref().into());
         self
     }
 
+    /// Sets the generated function name.
     pub fn with_generated_fn(&mut self, generated_fn: impl Into<String>) -> &mut Self {
         self.generated_fn = Some(generated_fn.into());
         self
