@@ -28,10 +28,10 @@ Add to `Cargo.toml` dependency to `static-files`:
 
 ```toml
 [dependencies]
-static-files = "0.1"
+static-files = "0.2"
 
 [build-dependencies]
-static-files = "0.1"
+static-files = "0.2"
 ```
 
 Add `build.rs` with call to bundle resources:
