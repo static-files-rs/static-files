@@ -3,7 +3,6 @@ Resource definition and single module based generation.
  */
 use path_slash::PathExt;
 use std::{
-    env,
     fs::{self, File, Metadata},
     io::{self, Write},
     path::{Path, PathBuf},
@@ -27,77 +26,6 @@ pub fn new_resource(data: &'static [u8], modified: u64, mime_type: &'static str)
     }
 }
 
-/// Generate resources for `resource_dir`.
-///
-/// ```rust
-/// // Generate resources for ./tests dir with file name generated.rs
-/// // stored in path defined by OUT_DIR environment variable.
-/// // Function name is 'generate'
-/// use static_files::resource::resource_dir;
-///
-/// resource_dir("./tests").build().unwrap();
-/// ```
-pub fn resource_dir<P: AsRef<Path>>(resource_dir: P) -> ResourceDir {
-    ResourceDir {
-        resource_dir: resource_dir.as_ref().into(),
-        ..Default::default()
-    }
-}
-
-/// Resource dir.
-///
-/// A builder structure allows to change default settings for:
-/// - file filter
-/// - generated file name
-/// - generated function name
-#[derive(Default)]
-pub struct ResourceDir {
-    pub(crate) resource_dir: PathBuf,
-    pub(crate) filter: Option<fn(p: &Path) -> bool>,
-    pub(crate) generated_filename: Option<PathBuf>,
-    pub(crate) generated_fn: Option<String>,
-}
-
-impl ResourceDir {
-    /// Generates resources for current configuration.
-    pub fn build(&self) -> io::Result<()> {
-        let generated_filename = self.generated_filename.clone().unwrap_or_else(|| {
-            let out_dir = env::var("OUT_DIR").unwrap();
-
-            Path::new(&out_dir).join("generated.rs")
-        });
-        let generated_fn = self
-            .generated_fn
-            .clone()
-            .unwrap_or_else(|| "generate".into());
-
-        generate_resources(
-            &self.resource_dir,
-            self.filter,
-            &generated_filename,
-            &generated_fn,
-        )
-    }
-
-    /// Sets the file filter.
-    pub fn with_filter(&mut self, filter: fn(p: &Path) -> bool) -> &mut Self {
-        self.filter = Some(filter);
-        self
-    }
-
-    /// Sets the generated filename.
-    pub fn with_generated_filename<P: AsRef<Path>>(&mut self, generated_filename: P) -> &mut Self {
-        self.generated_filename = Some(generated_filename.as_ref().into());
-        self
-    }
-
-    /// Sets the generated function name.
-    pub fn with_generated_fn(&mut self, generated_fn: impl Into<String>) -> &mut Self {
-        self.generated_fn = Some(generated_fn.into());
-        self
-    }
-}
-
 pub(crate) const DEFAULT_VARIABLE_NAME: &str = "r";
 
 /// Generate resources for `project_dir` using `filter`.
@@ -105,7 +33,6 @@ pub(crate) const DEFAULT_VARIABLE_NAME: &str = "r";
 ///
 /// in `build.rs`:
 /// ```rust
-///
 /// use std::{env, path::Path};
 /// use static_files::resource::generate_resources;
 ///
@@ -118,7 +45,6 @@ pub(crate) const DEFAULT_VARIABLE_NAME: &str = "r";
 ///
 /// in `main.rs`:
 /// ```rust
-///
 /// include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 ///
 /// fn main() {

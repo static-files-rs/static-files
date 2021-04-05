@@ -7,7 +7,8 @@ mod mods {
 use std::{env, path::Path};
 
 use mods::{
-    resource::{generate_resources_mapping, resource_dir},
+    resource::generate_resources_mapping,
+    resource_dir::resource_dir,
     sets::{generate_resources_sets, SplitByCount},
 };
 

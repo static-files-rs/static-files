@@ -7,7 +7,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use super::resource::ResourceDir;
+use super::resource_dir::ResourceDir;
 
 #[cfg(not(windows))]
 const NPM_CMD: &str = "npm";
