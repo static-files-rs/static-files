@@ -70,7 +70,6 @@ impl NpmBuild {
     /// Generates change detection instructions.
     ///
     /// It includes `package.json` directory, ignores by default `node_modules`, `package.json` and `package-lock.json` and target directory.
-    /// Additionally it adds `build.rs`.
     /// Each time `npm` changes timestamps on these files, so if we do not ignore them - it runs `npm` each time.
     /// It is recommended to put your dist files one level deeper. For example, if you have `web` with `package.json`
     /// and `dist` just below that, you better generate you index.html somewhere in `web\dist\sub_path\index.html`.
