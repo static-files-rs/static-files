@@ -70,7 +70,6 @@ impl NpmBuild {
     /// Generates change detection instructions.
     ///
     /// It includes `package.json` directory, ignores by default `node_modules`, `package.json` and `package-lock.json` and target directory.
-    /// Additionally it adds `build.rs`.
     /// Each time `npm` changes timestamps on these files, so if we do not ignore them - it runs `npm` each time.
     /// It is recommended to put your dist files one level deeper. For example, if you have `web` with `package.json`
     /// and `dist` just below that, you better generate you index.html somewhere in `web\dist\sub_path\index.html`.
@@ -80,13 +79,18 @@ impl NpmBuild {
     #[cfg(feature = "change-detection")]
     pub fn change_detection(self) -> Self {
         use ::change_detection::{
-            path_matchers::{equal, PathMatcherExt},
+            path_matchers::{any, equal, func, starts_with, PathMatcherExt},
             ChangeDetection,
         };
 
-        let default_exclude_filter = equal(self.package_json_dir.join("node_modules"))
-            .or(equal(self.package_json_dir.join("package.json")))
-            .or(equal(self.package_json_dir.join("package-lock.json")));
+        let package_json_dir = self.package_json_dir.clone();
+        let default_exclude_filter = any!(
+            equal(package_json_dir.clone()),
+            starts_with(self.package_json_dir.join("node_modules")),
+            equal(self.package_json_dir.join("package.json")),
+            equal(self.package_json_dir.join("package-lock.json")),
+            func(move |p| { p.is_file() && p.parent() != Some(package_json_dir.as_path()) })
+        );
 
         {
             let change_detection = if self.target_dir.is_none() {
@@ -102,14 +106,11 @@ impl NpmBuild {
                     }
                 }
 
-                let exclude_filter = default_exclude_filter.or(equal(target_dir));
+                let exclude_filter = default_exclude_filter.or(starts_with(target_dir));
                 ChangeDetection::exclude(exclude_filter)
             };
 
-            change_detection
-                .path(&self.package_json_dir)
-                .path("build.rs")
-                .generate();
+            change_detection.path(&self.package_json_dir).generate();
         }
         self
     }
