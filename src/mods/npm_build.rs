@@ -79,14 +79,14 @@ impl NpmBuild {
     #[cfg(feature = "change-detection")]
     pub fn change_detection(self) -> Self {
         use ::change_detection::{
-            path_matchers::{any, equal, func, PathMatcherExt},
+            path_matchers::{any, equal, func, starts_with, PathMatcherExt},
             ChangeDetection,
         };
 
         let package_json_dir = self.package_json_dir.clone();
         let default_exclude_filter = any!(
             equal(package_json_dir.clone()),
-            equal(self.package_json_dir.join("node_modules")),
+            starts_with(self.package_json_dir.join("node_modules")),
             equal(self.package_json_dir.join("package.json")),
             equal(self.package_json_dir.join("package-lock.json")),
             func(move |p| { p.is_file() && p.parent() != Some(package_json_dir.as_path()) })
@@ -106,8 +106,7 @@ impl NpmBuild {
                     }
                 }
 
-                let exclude_filter =
-                    default_exclude_filter.or(func(move |p| p.starts_with(target_dir.clone())));
+                let exclude_filter = default_exclude_filter.or(starts_with(target_dir));
                 ChangeDetection::exclude(exclude_filter)
             };
 
