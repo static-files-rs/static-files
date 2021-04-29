@@ -20,7 +20,14 @@ const NPM_CMD: &str = "npm.cmd";
 ///
 /// Resources collected in `node_modules` subdirectory.
 pub fn npm_resource_dir<P: AsRef<Path>>(resource_dir: P) -> io::Result<ResourceDir> {
-    Ok(NpmBuild::new(resource_dir).install()?.to_resource_dir())
+    let mut npm_build = NpmBuild::new(resource_dir).install()?;
+
+    #[cfg(feature = "change-detection")]
+    {
+        npm_build = npm_build.change_detection();
+    }
+
+    Ok(npm_build.into())
 }
 
 /// Executes `npm` commands before collecting resources.
