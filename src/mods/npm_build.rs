@@ -2,7 +2,7 @@
 `npm` support.
 */
 use std::{
-    io,
+    io::{self},
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -57,6 +57,8 @@ pub struct NpmBuild {
     package_json_dir: PathBuf,
     executable: String,
     target_dir: Option<PathBuf>,
+    stderr: Option<Stdio>,
+    stdout: Option<Stdio>,
 }
 
 impl NpmBuild {
@@ -123,43 +125,49 @@ impl NpmBuild {
     }
 
     /// Executes `npm install`.
-    pub fn install(self) -> io::Result<Self> {
-        if let Err(e) = self
-            .command()
-            .stderr(Stdio::null())
-            .stdout(Stdio::null())
+    pub fn install(mut self) -> io::Result<Self> {
+        self.package_command()
             .arg("install")
-            .current_dir(&self.package_json_dir)
             .status()
-        {
-            eprintln!("Cannot execute {} install: {:?}", &self.executable, e);
-            return Err(e);
-        }
-
-        Ok(self)
+            .map_err(|err| {
+                eprintln!("Cannot execute {} install: {:?}", &self.executable, err);
+                err
+            })
+            .map(|_| self)
     }
 
     /// Executes `npm run CMD`.
-    pub fn run(self, cmd: &str) -> io::Result<Self> {
-        if let Err(e) = self
-            .command()
-            .stderr(Stdio::null())
-            .stdout(Stdio::null())
+    pub fn run(mut self, cmd: &str) -> io::Result<Self> {
+        self.package_command()
             .arg("run")
             .arg(cmd)
-            .current_dir(&self.package_json_dir)
             .status()
-        {
-            eprintln!("Cannot execute {} run {}: {:?}", &self.executable, cmd, e);
-            return Err(e);
-        }
-
-        Ok(self)
+            .map_err(|err| {
+                eprintln!("Cannot execute {} run {}: {:?}", &self.executable, cmd, err);
+                err
+            })
+            .map(|_| self)
     }
 
     /// Sets target (default is node_modules).
     pub fn target<P: AsRef<Path>>(mut self, target_dir: P) -> Self {
         self.target_dir = Some(target_dir.as_ref().into());
+        self
+    }
+
+    /// Sets stderr for the next command.
+    ///
+    /// You should set it again, if you need also redirect output for the next command.
+    pub fn stderr<S: Into<Stdio>>(mut self, stdio: S) -> Self {
+        self.stderr = Some(stdio.into());
+        self
+    }
+
+    /// Sets stdout for the next command.
+    ///
+    /// You should set it again, if you need also redirect output for the next command.
+    pub fn stdout<S: Into<Stdio>>(mut self, stdio: S) -> Self {
+        self.stdout = Some(stdio.into());
         self
     }
 
@@ -178,6 +186,16 @@ impl NpmBuild {
         let mut cmd = Command::new("cmd");
 
         cmd.arg("/c").arg(&self.executable);
+
+        cmd
+    }
+
+    fn package_command(&mut self) -> Command {
+        let mut cmd = self.command();
+
+        cmd.stderr(self.stderr.take().unwrap_or_else(|| Stdio::inherit()))
+            .stdout(self.stdout.take().unwrap_or_else(|| Stdio::inherit()))
+            .current_dir(&self.package_json_dir);
 
         cmd
     }
