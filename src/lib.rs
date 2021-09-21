@@ -58,9 +58,4 @@ fn main() -> std::io::Result<()> {
 
 mod mods;
 
-pub use mods::{
-    npm_build::{npm_resource_dir, NpmBuild},
-    resource::{self, Resource},
-    resource_dir::{resource_dir, ResourceDir},
-    sets,
-};
+pub use mods::*;
