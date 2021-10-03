@@ -20,6 +20,8 @@ pub use self::compress::*;
 pub use self::generate::*;
 pub use self::storage::*;
 
+pub const NAMESPACE: &str = "static_files";
+
 pub struct ResourceFiles {
     path: PathBuf,
     read_dir: Option<Box<dyn Iterator<Item = io::Result<DirEntry>>>>,
@@ -28,6 +30,7 @@ pub struct ResourceFiles {
 #[derive(Debug)]
 pub enum ResourceError {
     InputOutputError(io::Error),
+    WrongOutDir
 }
 
 impl Error for ResourceError {}
@@ -36,6 +39,7 @@ impl fmt::Display for ResourceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ResourceError::InputOutputError(e) => write!(f, "input/output error: {}", e),
+            ResourceError::WrongOutDir => write!(f, "OUT_DIR environment variable is not defined or wrong"),
         }
     }
 }
@@ -164,7 +168,7 @@ pub trait ResourceFileAdapters: Iterator<Item = Result<ResourcePrototype>> + Siz
 
     fn generate<S>(self, resource_storage: S) -> Generate<Self, S>
     where
-        S: ResourceStorage,
+        S: ResourceStorageType,
     {
         Generate {
             iter: self,
