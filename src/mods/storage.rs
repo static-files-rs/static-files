@@ -1,19 +1,31 @@
 use std::{collections::HashMap, marker::PhantomData};
 
-use super::{NAMESPACE, Resource};
+use super::{Resource, NAMESPACE};
 
-pub trait ResourceStorage: std::fmt::Debug {
-    fn get<T: AsRef<str>>(key: &str) -> Option<&Resource<T>>;
+pub trait ResourceStorage<T>: std::fmt::Debug
+where
+    T: AsRef<str>,
+{
+    fn get(&self, key: &str) -> Option<&Resource<T>>;
 }
 
-impl<T> ResourceStorage for T where T: AsRef<str> + std::fmt::Debug {
-    fn get<E: AsRef<str>>(_key: &str) -> Option<&Resource<E>> {
+impl<T> ResourceStorage<T> for T
+where
+    T: AsRef<str> + std::fmt::Debug,
+{
+    fn get(&self, _key: &str) -> Option<&Resource<T>> {
         None
     }
 }
 
 pub trait ResourceStorageType {
     fn namespace(&self) -> &'static str;
+
+    fn storage_type(&self) -> &'static str;
+
+    fn tag_type(&self) -> &'static str {
+        "String"
+    }
 }
 
 pub trait ResourceStorageNamespace {
@@ -48,13 +60,20 @@ impl<NS: ResourceStorageNamespace> ResourceStorageType for HashMapResourceStorag
     fn namespace(&self) -> &'static str {
         NS::namespace()
     }
+
+    fn storage_type(&self) -> &'static str {
+        "::std::collections::HashMap"
+    }
 }
 
 #[derive(Debug)]
 pub struct HashMapResourceStorage<E: AsRef<str> = String>(HashMap<&'static str, Resource<E>>);
 
-impl<T> ResourceStorage for HashMapResourceStorage<T> where T: AsRef<str> + std::fmt::Debug {
-    fn get<E: AsRef<str>>(_key: &str) -> Option<&Resource<E>> {
-        None
+impl<T> ResourceStorage<T> for HashMapResourceStorage<T>
+where
+    T: AsRef<str> + std::fmt::Debug,
+{
+    fn get(&self, key: &str) -> Option<&Resource<T>> {
+        self.0.get(key)
     }
 }

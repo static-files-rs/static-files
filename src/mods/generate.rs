@@ -1,6 +1,6 @@
 use std::{
-    fs::File,
-    io::Write,
+    fs::{self, File},
+    io::{self, Write},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -48,7 +48,21 @@ impl ModuleGenerators {
 }
 
 #[derive(Default)]
-pub struct ModuleGeneratorOptions {}
+pub struct ModuleGeneratorOptions {
+    name: Option<String>,
+}
+
+impl ModuleGeneratorOptions {
+    fn name(&self) -> &str {
+        self.name.as_deref().unwrap_or("sets")
+    }
+
+    fn name_for_function(&self, fn_options: &FunctionOptions) -> String {
+        self.name
+            .clone()
+            .unwrap_or_else(|| format!("{}_sets", fn_options.name()))
+    }
+}
 
 #[derive(Default)]
 pub struct SplitByCountModuleGeneratorOptions {
@@ -80,24 +94,94 @@ where
 
 impl<I, S> ModuleGenerator<I, S> for SplitByCountModuleGenerator<I, S> where S: ResourceStorageType {}
 
-impl<I, S> Iterator for SplitByCountModuleGenerator<I, S>
+impl<I, S> SplitByCountModuleGenerator<I, S>
 where
     S: ResourceStorageType,
 {
-    type Item = Result<ModulePrototype>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-        // todo!()
+    pub(crate) fn create_set_module_file(
+        resource_storage: &S,
+        module_dir: &PathBuf,
+        modules_count: i32,
+    ) -> Result<File> {
+        todo!()
     }
 }
 
-impl<I, S> ResourceStorageType for SplitByCountModuleGenerator<I, S>
+impl<I, S> ToFunction for SplitByCountModuleGenerator<I, S>
 where
     S: ResourceStorageType,
+    I: Iterator<Item = Result<ResourcePrototype>>,
 {
-    fn namespace(&self) -> &'static str {
-        self.generate.resource_storage.namespace()
+    fn write_function(self, options: impl Into<FunctionOptions>) -> Result<()> {
+        let Generate {
+            iter,
+            resource_storage,
+        } = self.generate;
+        let function_options = options.into();
+        let namespace = resource_storage.namespace();
+
+        let module_name = self.options.generic_options.name_for_function(&function_options);
+
+        let module_dir = function_options.path()?.join(&module_name);
+
+        fs::create_dir_all(&module_dir)?;
+
+        let mut count = 0usize;
+        {
+            let mut module_file = File::create(module_dir.join("mod.rs"))?;
+
+            writeln!(
+                module_file,
+                "use ::{0}::new_resource as n;\n\
+                use ::std::include_bytes as i;\n\
+                use ::{0}::Resource;\n\
+                use {1};",
+                namespace,
+                resource_storage.storage_type(),
+            )?;
+
+            let mut modules_count = 1;
+
+            let mut set_file =
+                Self::create_set_module_file(&resource_storage, &module_dir, modules_count)?;
+
+            for resource in iter {
+                let resource = resource?;
+                count += 1;
+                if count % self.options.count == 0 {
+
+                }
+            }
+        }
+
+        {
+            let generated_filename = function_options.generated_filename()?;
+            dbg!(&generated_filename);
+            let mut generated_file = File::create(&generated_filename)?;
+
+            if count > 0 {
+                write!(
+                    generated_file,
+                    "mod {};\n\
+                    pub use {}::{};",
+                    module_name,
+                    module_name,
+                    function_options.name()
+                )?;
+            } else {
+                write!(
+                    generated_file,
+                    "{}\n{} fn {}() -> impl ::{}::ResourceStorage<{}> {{\n\"Empty set\"\n}}\n",
+                    function_options.annotations().join("\n"),
+                    function_options.modifiers(),
+                    function_options.name(),
+                    namespace,
+                    resource_storage.tag_type(),
+                )?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -105,34 +189,11 @@ struct ModuleOptions {
     root_module: String,
 }
 
-pub struct ModulePrototype {
-    name: String,
-    options: Arc<ModuleOptions>,
-}
-
-impl WriteTo for ModulePrototype {
-    fn write(&self, output: impl Write, resource_storage: &impl ResourceStorageType) -> Result<()> {
-        todo!()
-    }
-}
-
-impl WriteToFunction for ModulePrototype {
-    fn write_header(&self, mut output: impl Write, options: &FunctionOptions) -> Result<()> {
-        Ok(writeln!(
-            output,
-            "mod {};\n{} use {}::{};",
-            self.options.root_module,
-            options.modifiers(),
-            self.options.root_module,
-            options.name()
-        )?)
-    }
-}
-
 #[derive(Default)]
 pub struct FunctionOptions {
     name: Option<String>,
     path: Option<PathBuf>,
+    filename: Option<String>,
     annotations: Option<Vec<String>>,
     modifiers: Option<String>,
 }
@@ -172,11 +233,19 @@ impl FunctionOptions {
         self.path.clone().map_or_else(
             || {
                 std::env::var("OUT_DIR")
-                    .map(|x| PathBuf::from(x).join("generated.rs"))
+                    .map(PathBuf::from)
                     .map_err(|_e| ResourceError::WrongOutDir)
             },
             Ok,
         )
+    }
+
+    fn filename(&self) -> &str {
+        self.filename.as_deref().unwrap_or("generated.rs")
+    }
+
+    fn generated_filename(&self) -> Result<PathBuf> {
+        self.path().map(|path| path.join(self.filename()))
     }
 
     fn annotations(&self) -> Vec<&str> {
@@ -191,57 +260,10 @@ impl FunctionOptions {
     }
 }
 
-impl<N: AsRef<str>> From<N> for FunctionOptions {
-    fn from(value: N) -> Self {
-        Self {
-            name: Some(value.as_ref().to_string()),
-            ..Default::default()
-        }
-    }
-}
-
-pub trait WriteTo {
-    fn write(&self, output: impl Write, resource_storage: &impl ResourceStorageType) -> Result<()>;
-}
-
-pub trait WriteToFunction: WriteTo {
-    fn write_header(&self, output: impl Write, options: &FunctionOptions) -> Result<()>;
-}
-
-pub struct MapOptions {}
-
 pub trait ToFunction {
-    fn to_function(self, options: impl Into<FunctionOptions>) -> Result<()>;
+    fn write_function(self, options: impl Into<FunctionOptions>) -> Result<()>;
 }
 
-impl<I, T> ToFunction for T
-where
-    T: Iterator<Item = Result<I>> + ResourceStorageType,
-    I: WriteToFunction,
-{
-    fn to_function(mut self, options: impl Into<FunctionOptions>) -> Result<()> {
-        let options = options.into();
-
-        let generated_filename = options.path()?;
-        let mut generated_file = File::create(&generated_filename)?;
-
-        if let Some(first) = self.next().transpose()? {
-            first.write_header(&mut generated_file, &options)?;
-            first.write(&mut generated_file, &self)?;
-            while let Some(writable) = self.next().transpose()? {
-                writable.write(&mut generated_file, &self)?;
-            }
-        } else {
-            write!(
-                &mut generated_file,
-                "{}\n{} fn {}() -> impl ::{}::ResourceStorage {{\n\"Empty set\"\n}}\n",
-                options.annotations().join("\n"),
-                options.modifiers(),
-                options.name(),
-                self.namespace(),
-            )?;
-        }
-
-        Ok(())
-    }
+pub trait ToMap {
+    fn write_map(self) -> Result<()>;
 }

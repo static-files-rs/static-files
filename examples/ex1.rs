@@ -13,14 +13,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     ResourceFiles::new("./src")?
         .map(|x| {
-            // dbg!(&x);
+            dbg!(&x);
             x
         })
         .compress(NoopCompressConverter)
         .generate(ResourceStorages::hash_map())
         .module_generator(ModuleGenerators::split_by_count(10))
         // .to_function("generate")
-        .to_function(FunctionOptions::new().with_name("generate"))?;
+        .write_function(FunctionOptions::new().with_name("generate"))?;
     eprint!("{}", std::fs::read_to_string("./target/ex1/generated.rs")?);
     Ok(())
 }
