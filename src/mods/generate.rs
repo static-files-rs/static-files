@@ -1,8 +1,8 @@
 use std::{
     fs::{self, File},
-    io::{self, Write},
+    io::Write,
+    ops::{Deref, DerefMut},
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use super::{ResourceError, ResourcePrototype, ResourceStorageType, Result};
@@ -98,12 +98,87 @@ impl<I, S> SplitByCountModuleGenerator<I, S>
 where
     S: ResourceStorageType,
 {
-    pub(crate) fn create_set_module_file(
-        resource_storage: &S,
+    pub(crate) fn create_set_module_file<'a>(
+        resource_storage: &'a S,
         module_dir: &PathBuf,
         modules_count: i32,
-    ) -> Result<File> {
-        todo!()
+    ) -> Result<SetModuleFile<'a, S>> {
+        let mut set_module = File::create(
+            module_dir.join(format!("{}.rs", Self::module_name(modules_count))),
+        )
+        .map(|file| SetModuleFile {
+            file,
+            resource_storage,
+        })?;
+
+        set_module.write_fn_start()?;
+
+        Ok(set_module)
+    }
+
+    fn module_name(module_index: i32) -> String {
+        format!("set_{}", module_index)
+    }
+
+    fn write_fn_start(
+        file: &mut impl Write,
+        function_options: &FunctionOptions,
+        resource_storage: &S,
+    ) -> Result<()> {
+        writeln!(
+            file,
+            "{}\n{} fn {}() -> {} {{",
+            function_options.annotations().join("\n"),
+            function_options.modifiers(),
+            function_options.name(),
+            resource_storage.impl_signature(),
+        )
+        .map_err(From::from)
+    }
+
+    fn write_fn_end(file: &mut impl Write) -> Result<()> {
+        writeln!(file, "}}").map_err(From::from)
+    }
+}
+
+pub(crate) struct SetModuleFile<'a, S: ResourceStorageType> {
+    file: File,
+    resource_storage: &'a S,
+}
+
+impl<'a, S: ResourceStorageType> SetModuleFile<'a, S> {
+    fn write_fn_start(&mut self) -> Result<()> {
+        writeln!(
+            self.file,
+            "use super::*;\n\
+            pub(crate) fn generate({}: &mut {}) {{",
+            self.resource_storage.default_variable_name(),
+            self.resource_storage.impl_signature(),
+        )
+        .map_err(From::from)
+    }
+
+    fn write_fn_end(&mut self) -> Result<()> {
+        writeln!(self.file, "}}").map_err(From::from)
+    }
+
+    fn write_resource(&mut self, resource: ResourcePrototype) -> Result<()> {
+        self.resource_storage
+            .write_resource(&mut self.file, resource)
+    }
+}
+
+impl<'a, S: ResourceStorageType> Deref for SetModuleFile<'a, S> {
+    type Target = File;
+
+    fn deref(&self) -> &Self::Target {
+        &self.file
+    }
+}
+
+impl<'a, S: ResourceStorageType> DerefMut for SetModuleFile<'a, S> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.file
     }
 }
 
@@ -120,7 +195,10 @@ where
         let function_options = options.into();
         let namespace = resource_storage.namespace();
 
-        let module_name = self.options.generic_options.name_for_function(&function_options);
+        let module_name = self
+            .options
+            .generic_options
+            .name_for_function(&function_options);
 
         let module_dir = function_options.path()?.join(&module_name);
 
@@ -147,11 +225,54 @@ where
 
             for resource in iter {
                 let resource = resource?;
-                count += 1;
-                if count % self.options.count == 0 {
 
+                count += 1;
+
+                let should_split = count % self.options.count == 0;
+
+                if should_split {
+                    modules_count += 1;
+                    set_file.write_fn_end()?;
+                    set_file = Self::create_set_module_file(
+                        &resource_storage,
+                        &module_dir,
+                        modules_count,
+                    )?;
                 }
+
+                set_file.write_resource(resource)?;
             }
+
+            set_file.write_fn_end()?;
+
+            for module_index in 1..=modules_count {
+                writeln!(module_file, "mod {};", Self::module_name(module_index))?;
+            }
+
+            Self::write_fn_start(&mut module_file, &function_options, &resource_storage)?;
+            writeln!(
+                module_file,
+                "let mut {} = {}();",
+                resource_storage.default_variable_name(),
+                resource_storage.storage_constructor()
+            )?;
+            writeln!(
+                module_file,
+                "let mut w{} = &mut {};",
+                resource_storage.default_variable_name(),
+                resource_storage.default_variable_name()
+            )?;
+            for module_index in 1..=modules_count {
+                writeln!(
+                    module_file,
+                    "{}::{}(w{});",
+                    Self::module_name(module_index),
+                    function_options.name(),
+                    resource_storage.default_variable_name()
+                )?;
+            }
+            writeln!(module_file, "{}", resource_storage.default_variable_name())?;
+            Self::write_fn_end(&mut module_file)?;
         }
 
         {
@@ -171,12 +292,11 @@ where
             } else {
                 write!(
                     generated_file,
-                    "{}\n{} fn {}() -> impl ::{}::ResourceStorage<{}> {{\n\"Empty set\"\n}}\n",
+                    "{}\n{} fn {}() -> {} {{\n\"Empty set\"\n}}\n",
                     function_options.annotations().join("\n"),
                     function_options.modifiers(),
                     function_options.name(),
-                    namespace,
-                    resource_storage.tag_type(),
+                    resource_storage.impl_signature(),
                 )?;
             }
         }

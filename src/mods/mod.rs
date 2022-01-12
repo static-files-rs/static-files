@@ -30,7 +30,7 @@ pub struct ResourceFiles {
 #[derive(Debug)]
 pub enum ResourceError {
     InputOutputError(io::Error),
-    WrongOutDir
+    WrongOutDir,
 }
 
 impl Error for ResourceError {}
@@ -39,7 +39,9 @@ impl fmt::Display for ResourceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ResourceError::InputOutputError(e) => write!(f, "input/output error: {}", e),
-            ResourceError::WrongOutDir => write!(f, "OUT_DIR environment variable is not defined or wrong"),
+            ResourceError::WrongOutDir => {
+                write!(f, "OUT_DIR environment variable is not defined or wrong")
+            }
         }
     }
 }
@@ -124,6 +126,18 @@ pub struct Resource<T: AsRef<str> = &'static str> {
     data: Data,
     tag: T,
     mime_type: &'static str,
+}
+
+pub fn new_resource<T: AsRef<str>>(
+    data: &'static [u8],
+    tag: T,
+    mime_type: &'static str,
+) -> Resource<T> {
+    Resource {
+        data: Data::Basic(data),
+        tag,
+        mime_type,
+    }
 }
 
 #[derive(Debug)]
