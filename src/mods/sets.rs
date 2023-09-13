@@ -177,7 +177,9 @@ fn create_set_module_file(module_dir: &Path, module_index: usize) -> io::Result<
 
     writeln!(
         set_module,
-        "use super::*;
+        "#[allow(clippy::wildcard_imports)]
+use super::*;
+#[allow(clippy::unreadable_literal)]
 pub(crate) fn generate({}: &mut HashMap<&'static str, Resource>) {{",
         DEFAULT_VARIABLE_NAME
     )?;
