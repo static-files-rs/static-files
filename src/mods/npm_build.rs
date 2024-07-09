@@ -20,6 +20,7 @@ const NPM_CMD: &str = "npm.cmd";
 ///
 /// Resources collected in `node_modules` subdirectory.
 pub fn npm_resource_dir<P: AsRef<Path>>(resource_dir: P) -> io::Result<ResourceDir> {
+    #[allow(unused_mut)]
     let mut npm_build = NpmBuild::new(resource_dir).install()?;
 
     #[cfg(feature = "change-detection")]
@@ -71,6 +72,7 @@ impl NpmBuild {
     }
 
     /// Allow the user to set their own npm-like executable (like yarn, for instance)
+    #[must_use]
     pub fn executable(self, executable: &str) -> Self {
         let executable = String::from(executable);
         Self { executable, ..self }
@@ -86,6 +88,8 @@ impl NpmBuild {
     /// For complete example see: [Angular Router Sample](https://github.com/kilork/actix-web-static-files-example-angular-router).
     /// If default behavior does not work for you, you can use [change-detection](https://crates.io/crates/change-detection) directly.
     #[cfg(feature = "change-detection")]
+    #[must_use]
+    #[allow(clippy::missing_panics_doc)]
     pub fn change_detection(self) -> Self {
         use ::change_detection::{
             path_matchers::{any, equal, func, starts_with, PathMatcherExt},
@@ -102,6 +106,7 @@ impl NpmBuild {
         );
 
         {
+            // TODO: rework this code to not panic
             let change_detection = if self.target_dir.is_none() {
                 ChangeDetection::exclude(default_exclude_filter)
             } else {
@@ -130,7 +135,7 @@ impl NpmBuild {
             .arg("install")
             .status()
             .map_err(|err| {
-                eprintln!("Cannot execute {} install: {:?}", &self.executable, err);
+                eprintln!("Cannot execute {} install: {err:?}", self.executable);
                 err
             })
             .map(|_| self)
@@ -143,13 +148,14 @@ impl NpmBuild {
             .arg(cmd)
             .status()
             .map_err(|err| {
-                eprintln!("Cannot execute {} run {}: {:?}", &self.executable, cmd, err);
+                eprintln!("Cannot execute {} run {cmd}: {err:?}", self.executable);
                 err
             })
             .map(|_| self)
     }
 
-    /// Sets target (default is node_modules).
+    /// Sets target (default is `node_modules`).
+    #[must_use]
     pub fn target<P: AsRef<Path>>(mut self, target_dir: P) -> Self {
         self.target_dir = Some(target_dir.as_ref().into());
         self
@@ -158,6 +164,7 @@ impl NpmBuild {
     /// Sets stderr for the next command.
     ///
     /// You should set it again, if you need also redirect output for the next command.
+    #[must_use]
     pub fn stderr<S: Into<Stdio>>(mut self, stdio: S) -> Self {
         self.stderr = Some(stdio.into());
         self
@@ -166,12 +173,15 @@ impl NpmBuild {
     /// Sets stdout for the next command.
     ///
     /// You should set it again, if you need also redirect output for the next command.
+    #[must_use]
     pub fn stdout<S: Into<Stdio>>(mut self, stdio: S) -> Self {
         self.stdout = Some(stdio.into());
         self
     }
 
     /// Converts to `ResourceDir`.
+    #[allow(clippy::wrong_self_convention)]
+    #[must_use]
     pub fn to_resource_dir(self) -> ResourceDir {
         self.into()
     }
@@ -193,8 +203,8 @@ impl NpmBuild {
     fn package_command(&mut self) -> Command {
         let mut cmd = self.command();
 
-        cmd.stderr(self.stderr.take().unwrap_or_else(|| Stdio::inherit()))
-            .stdout(self.stdout.take().unwrap_or_else(|| Stdio::inherit()))
+        cmd.stderr(self.stderr.take().unwrap_or_else(Stdio::inherit))
+            .stdout(self.stdout.take().unwrap_or_else(Stdio::inherit))
             .current_dir(&self.package_json_dir);
 
         cmd

@@ -34,21 +34,22 @@ static-files = "0.2"
 
 Add `build.rs` with call to bundle resources:
 
-```rust#ignore
+```rust, no_run
 use static_files::resource_dir;
 
 fn main() -> std::io::Result<()> {
-    resource_dir("./static").build()?;
+    resource_dir("./static").build()
 }
 ```
 
 Include generated code in `main.rs`:
 
-```rust#ignore
+```rust, no_run
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
 fn main() -> std::io::Result<()> {
     let generated = generate(); // <-- this function is defined in generated.rs
-    ...
+    // ...
+    Ok(())
 }
 ```

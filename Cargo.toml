@@ -2,7 +2,7 @@
 name = "static-files"
 version = "0.2.4"
 authors = ["Alexander Korolev <alexander.korolev.germany@gmail.com>"]
-edition = "2018"
+edition = "2021"
 categories = []
 description = """
 The library to help automate static resource collection.
@@ -11,16 +11,28 @@ homepage = "https://github.com/static-files-rs/static-files"
 keywords = []
 license = "Unlicense OR MIT"
 repository = "https://github.com/static-files-rs/static-files"
+rust-version = "1.60.0"
 
 [features]
-default = [ "change-detection" ]
+default = ["change-detection"]
+change-detection = ["dep:change-detection"]
 
 [dependencies]
 change-detection = { version = "1.2", optional = true }
 mime_guess = "2.0"
-path-slash = "0.1"
+path-slash = "0.2"
 
 [build-dependencies]
 change-detection = { version = "1.2", optional = true }
 mime_guess = "2.0"
-path-slash = "0.1"
+path-slash = "0.2"
+
+[lints.rust]
+unused_qualifications = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+missing_errors_doc = "allow"
+module_name_repetitions = "allow"
+needless_doctest_main = "allow"
+struct_field_names = "allow"
