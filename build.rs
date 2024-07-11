@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 #![doc(html_no_source)]
-mod mods {
-    include!("src/mods/mod.rs");
-}
+#[path = "src/mods/mod.rs"]
+mod mods;
 
 use std::{env, path::Path};
 

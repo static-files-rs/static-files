@@ -43,7 +43,7 @@ pub fn npm_resource_dir<P: AsRef<Path>>(resource_dir: P) -> io::Result<ResourceD
 ///         .install().unwrap() // runs npm install
 ///         .run("build").unwrap() // runs npm run build
 ///         .target("./web/dist")
-///         .to_resource_dir()
+///         .into_resource_dir()
 ///         .build().unwrap();
 /// }
 /// ```
@@ -71,9 +71,9 @@ impl NpmBuild {
     }
 
     /// Allow the user to set their own npm-like executable (like yarn, for instance)
-    pub fn executable(self, executable: &str) -> Self {
-        let executable = String::from(executable);
-        Self { executable, ..self }
+    pub fn executable(&mut self, executable: &str) -> &mut Self {
+        self.executable = String::from(executable);
+        self
     }
 
     /// Generates change detection instructions.
@@ -172,7 +172,7 @@ impl NpmBuild {
     }
 
     /// Converts to `ResourceDir`.
-    pub fn to_resource_dir(self) -> ResourceDir {
+    pub fn into_resource_dir(self) -> ResourceDir {
         self.into()
     }
 
@@ -193,8 +193,8 @@ impl NpmBuild {
     fn package_command(&mut self) -> Command {
         let mut cmd = self.command();
 
-        cmd.stderr(self.stderr.take().unwrap_or_else(|| Stdio::inherit()))
-            .stdout(self.stdout.take().unwrap_or_else(|| Stdio::inherit()))
+        cmd.stderr(self.stderr.take().unwrap_or_else(Stdio::inherit))
+            .stdout(self.stdout.take().unwrap_or_else(Stdio::inherit))
             .current_dir(&self.package_json_dir);
 
         cmd
