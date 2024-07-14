@@ -1,8 +1,9 @@
-use super::sets::{generate_resources_sets, SplitByCount};
 use std::{
     env, io,
     path::{Path, PathBuf},
 };
+
+use super::sets::{generate_resources_sets, SplitByCount};
 
 /// Generate resources for `resource_dir`.
 ///
@@ -42,6 +43,9 @@ pub const DEFAULT_COUNT_PER_MODULE: usize = 256;
 
 impl ResourceDir {
     /// Generates resources for current configuration.
+    ///
+    /// # Panics
+    /// Panics if `OUT_DIR` environment variable is not set.
     pub fn build(self) -> io::Result<()> {
         let generated_filename = self.generated_filename.unwrap_or_else(|| {
             let out_dir = env::var("OUT_DIR").unwrap();
@@ -52,14 +56,14 @@ impl ResourceDir {
 
         let module_name = self
             .module_name
-            .unwrap_or_else(|| format!("{}_{}", &generated_fn, DEFAULT_MODULE_NAME));
+            .unwrap_or_else(|| format!("{generated_fn}_{DEFAULT_MODULE_NAME}"));
 
         let count_per_module = self.count_per_module.unwrap_or(DEFAULT_COUNT_PER_MODULE);
 
         generate_resources_sets(
             &self.resource_dir,
             self.filter,
-            &generated_filename,
+            generated_filename,
             module_name.as_str(),
             &generated_fn,
             &mut SplitByCount::new(count_per_module),

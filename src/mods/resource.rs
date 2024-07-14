@@ -1,13 +1,14 @@
 /*!
 Resource definition and single module based generation.
  */
-use path_slash::PathExt;
 use std::{
     fs::{self, File, Metadata},
     io::{self, Write},
     path::{Path, PathBuf},
     time::SystemTime,
 };
+
+use path_slash::PathExt;
 
 /// Static files resource.
 pub struct Resource {
@@ -18,6 +19,7 @@ pub struct Resource {
 
 /// Used internally in generated functions.
 #[inline]
+#[must_use]
 pub fn new_resource(data: &'static [u8], modified: u64, mime_type: &'static str) -> Resource {
     Resource {
         data,
@@ -67,7 +69,7 @@ pub fn generate_resources<P: AsRef<Path>, G: AsRef<Path>>(
     generate_uses(&mut f)?;
 
     generate_variable_header(&mut f, DEFAULT_VARIABLE_NAME)?;
-    generate_resource_inserts(&mut f, &project_dir, DEFAULT_VARIABLE_NAME, resources)?;
+    generate_resource_inserts(&mut f, &project_dir, DEFAULT_VARIABLE_NAME, &resources)?;
     generate_variable_return(&mut f, DEFAULT_VARIABLE_NAME)?;
 
     generate_function_end(&mut f)?;
@@ -76,7 +78,7 @@ pub fn generate_resources<P: AsRef<Path>, G: AsRef<Path>>(
 }
 
 /// Generate resource mapping for `project_dir` using `filter`.
-/// Result saved in `generated_filename` as anonymous block which returns HashMap<&'static str, Resource>.
+/// Result saved in `generated_filename` as anonymous block which returns `HashMap<&'static str, Resource>`.
 ///
 /// in `build.rs`:
 /// ```rust
@@ -122,7 +124,7 @@ pub fn generate_resources_mapping<P: AsRef<Path>, G: AsRef<Path>>(
 
     generate_variable_header(&mut f, DEFAULT_VARIABLE_NAME)?;
 
-    generate_resource_inserts(&mut f, &project_dir, DEFAULT_VARIABLE_NAME, resources)?;
+    generate_resource_inserts(&mut f, &project_dir, DEFAULT_VARIABLE_NAME, &resources)?;
 
     generate_variable_return(&mut f, DEFAULT_VARIABLE_NAME)?;
 
@@ -161,9 +163,9 @@ pub(crate) fn generate_resource_inserts<P: AsRef<Path>, W: Write>(
     f: &mut W,
     project_dir: &P,
     variable_name: &str,
-    resources: Vec<(PathBuf, Metadata)>,
+    resources: &[(PathBuf, Metadata)],
 ) -> io::Result<()> {
-    for resource in &resources {
+    for resource in resources {
         generate_resource_insert(f, project_dir, variable_name, resource)?;
     }
     Ok(())
@@ -177,7 +179,7 @@ pub(crate) fn generate_resource_insert<P: AsRef<Path>, W: Write>(
 ) -> io::Result<()> {
     let (path, metadata) = resource;
     let abs_path = path.canonicalize()?;
-    let key_path = path.strip_prefix(&project_dir).unwrap().to_slash().unwrap();
+    let key_path = path.strip_prefix(project_dir).unwrap().to_slash().unwrap();
 
     let modified = if let Ok(Ok(modified)) = metadata
         .modified()
@@ -187,19 +189,17 @@ pub(crate) fn generate_resource_insert<P: AsRef<Path>, W: Write>(
     } else {
         0
     };
-    let mime_type = mime_guess::MimeGuess::from_path(&path).first_or_octet_stream();
+    let mime_type = mime_guess::MimeGuess::from_path(path).first_or_octet_stream();
     writeln!(
         f,
-        "{}.insert({:?},n(i!({:?}),{:?},{:?}));",
-        variable_name, &key_path, &abs_path, modified, &mime_type,
+        "{variable_name}.insert({key_path:?},n(i!({abs_path:?}),{modified:?},{mime_type:?}));",
     )
 }
 
 pub(crate) fn generate_function_header<F: Write>(f: &mut F, fn_name: &str) -> io::Result<()> {
     writeln!(
         f,
-        "#[allow(clippy::unreadable_literal)] pub fn {}() -> ::std::collections::HashMap<&'static str, ::static_files::Resource> {{",
-        fn_name
+        "#[allow(clippy::unreadable_literal)] pub fn {fn_name}() -> ::std::collections::HashMap<&'static str, ::static_files::Resource> {{",
     )
 }
 
@@ -210,7 +210,8 @@ pub(crate) fn generate_function_end<F: Write>(f: &mut F) -> io::Result<()> {
 pub(crate) fn generate_uses<F: Write>(f: &mut F) -> io::Result<()> {
     writeln!(
         f,
-        "use ::static_files::resource::new_resource as n;
+        "\
+use ::static_files::resource::new_resource as n;
 use ::std::include_bytes as i;",
     )
 }
@@ -218,11 +219,10 @@ use ::std::include_bytes as i;",
 pub(crate) fn generate_variable_header<F: Write>(f: &mut F, variable_name: &str) -> io::Result<()> {
     writeln!(
         f,
-        "let mut {} = ::std::collections::HashMap::new();",
-        variable_name
+        "let mut {variable_name} = ::std::collections::HashMap::new();",
     )
 }
 
 pub(crate) fn generate_variable_return<F: Write>(f: &mut F, variable_name: &str) -> io::Result<()> {
-    writeln!(f, "{}", variable_name)
+    writeln!(f, "{variable_name}")
 }

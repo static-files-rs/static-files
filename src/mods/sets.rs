@@ -29,6 +29,7 @@ pub struct SplitByCount {
 }
 
 impl SplitByCount {
+    #[must_use]
     pub fn new(max: usize) -> Self {
         Self { current: 0, max }
     }
@@ -49,7 +50,7 @@ impl SetSplitStrategie for SplitByCount {
 }
 
 /// Generate resources for `project_dir` using `filter`
-/// breaking them into separate modules using `set_split_strategie` (recommended for large > 128 Mb setups).
+/// breaking them into separate modules using `set_split_strategy` (recommended for large > 128 Mb setups).
 ///
 /// Result saved in module named `module_name`. It exports
 /// only one function named `fn_name`. It is then exported from
@@ -94,7 +95,7 @@ pub fn generate_resources_sets<P, G, S>(
     generated_filename: G,
     module_name: &str,
     fn_name: &str,
-    set_split_strategie: &mut S,
+    set_split_strategy: &mut S,
 ) -> io::Result<()>
 where
     P: AsRef<Path>,
@@ -116,26 +117,26 @@ where
     generate_uses(&mut module_file)?;
     writeln!(
         module_file,
-        "
-use ::static_files::Resource;
-use ::std::collections::HashMap;"
+        "\
+use ::std::collections::HashMap;
+use ::static_files::Resource;"
     )?;
 
     let mut modules_count = 1;
 
     let mut set_file = create_set_module_file(&module_dir, modules_count)?;
-    let mut should_split = set_split_strategie.should_split();
+    let mut should_split = set_split_strategy.should_split();
 
     for resource in &resources {
         let (path, metadata) = &resource;
         if should_split {
-            set_split_strategie.reset();
+            set_split_strategy.reset();
             modules_count += 1;
             generate_function_end(&mut set_file)?;
             set_file = create_set_module_file(&module_dir, modules_count)?;
         }
-        set_split_strategie.register(path, metadata);
-        should_split = set_split_strategie.should_split();
+        set_split_strategy.register(path, metadata);
+        should_split = set_split_strategy.should_split();
 
         generate_resource_insert(&mut set_file, &project_dir, DEFAULT_VARIABLE_NAME, resource)?;
     }
@@ -143,7 +144,7 @@ use ::std::collections::HashMap;"
     generate_function_end(&mut set_file)?;
 
     for module_index in 1..=modules_count {
-        writeln!(module_file, "mod set_{};", module_index)?;
+        writeln!(module_file, "mod set_{module_index};")?;
     }
 
     generate_function_header(&mut module_file, fn_name)?;
@@ -153,8 +154,7 @@ use ::std::collections::HashMap;"
     for module_index in 1..=modules_count {
         writeln!(
             module_file,
-            "set_{}::generate(&mut {});",
-            module_index, DEFAULT_VARIABLE_NAME
+            "set_{module_index}::generate(&mut {DEFAULT_VARIABLE_NAME});",
         )?;
     }
 
@@ -164,24 +164,24 @@ use ::std::collections::HashMap;"
 
     writeln!(
         generated_file,
-        "mod {};
-pub use {}::{};",
-        module_name, module_name, fn_name
+        "\
+mod {module_name};
+pub use {module_name}::{fn_name};",
     )?;
 
     Ok(())
 }
 
 fn create_set_module_file(module_dir: &Path, module_index: usize) -> io::Result<File> {
-    let mut set_module = File::create(module_dir.join(format!("set_{}.rs", module_index)))?;
+    let mut set_module = File::create(module_dir.join(format!("set_{module_index}.rs")))?;
 
     writeln!(
         set_module,
-        "#[allow(clippy::wildcard_imports)]
+        "\
+#[allow(clippy::wildcard_imports)]
 use super::*;
 #[allow(clippy::unreadable_literal)]
-pub(crate) fn generate({}: &mut HashMap<&'static str, Resource>) {{",
-        DEFAULT_VARIABLE_NAME
+pub(crate) fn generate({DEFAULT_VARIABLE_NAME}: &mut HashMap<&'static str, Resource>) {{",
     )?;
 
     Ok(set_module)
