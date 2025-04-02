@@ -53,7 +53,7 @@ pub fn npm_resource_dir<P: AsRef<Path>>(resource_dir: P) -> io::Result<ResourceD
 /// ```
 /// Include generated code in `main.rs`:
 ///
-/// ```rust, no_run
+/// ```rust, ignore
 /// include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 /// ```
 #[derive(Default, Debug)]
