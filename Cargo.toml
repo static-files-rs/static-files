@@ -16,6 +16,7 @@ rust-version = "1.60.0"
 [features]
 default = ["change-detection"]
 change-detection = ["dep:change-detection"]
+sort = []
 
 [dependencies]
 change-detection = { version = "1.2", optional = true }
