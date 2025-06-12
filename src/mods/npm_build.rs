@@ -2,6 +2,7 @@
 `npm` support.
 */
 use std::{
+    env, fs,
     io::{self},
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -21,7 +22,9 @@ const NPM_CMD: &str = "npm.cmd";
 /// Resources collected in `node_modules` subdirectory.
 pub fn npm_resource_dir<P: AsRef<Path>>(resource_dir: P) -> io::Result<ResourceDir> {
     #[allow(unused_mut)]
-    let mut npm_build = NpmBuild::new(resource_dir).install()?;
+    let mut npm_build = NpmBuild::new(resource_dir)
+        .node_modules_strategy(NodeModulesStrategy::MoveToOutDir)
+        .install()?;
 
     #[cfg(feature = "change-detection")]
     {
@@ -36,7 +39,7 @@ pub fn npm_resource_dir<P: AsRef<Path>>(resource_dir: P) -> io::Result<ResourceD
 /// Example usage:
 /// Add `build.rs` with call to bundle resources:
 ///
-/// ```rust#ignore
+/// ```rust, no_run
 /// use static_files::NpmBuild;
 ///
 /// fn main() {
@@ -50,7 +53,7 @@ pub fn npm_resource_dir<P: AsRef<Path>>(resource_dir: P) -> io::Result<ResourceD
 /// ```
 /// Include generated code in `main.rs`:
 ///
-/// ```rust#ignore
+/// ```rust, ignore
 /// include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 /// ```
 #[derive(Default, Debug)]
@@ -58,6 +61,7 @@ pub struct NpmBuild {
     package_json_dir: PathBuf,
     executable: String,
     target_dir: Option<PathBuf>,
+    node_modules_strategy: NodeModulesStrategy,
     stderr: Option<Stdio>,
     stdout: Option<Stdio>,
 }
@@ -155,9 +159,20 @@ impl NpmBuild {
     }
 
     /// Sets target (default is `node_modules`).
+    ///
+    /// The `OUT_DIR` variable is automatically prepended.
+    /// Do not forget to adjust your JS side accordingly.
+    /// Use absolute path to avoid this behavior.
     #[must_use]
     pub fn target<P: AsRef<Path>>(mut self, target_dir: P) -> Self {
-        self.target_dir = Some(target_dir.as_ref().into());
+        let target_dir = target_dir.as_ref();
+        self.target_dir = Some(if target_dir.is_absolute() {
+            target_dir.into()
+        } else if let Ok(out_dir) = env::var("OUT_DIR").map(PathBuf::from) {
+            out_dir.join(target_dir)
+        } else {
+            target_dir.into()
+        });
         self
     }
 
@@ -176,6 +191,15 @@ impl NpmBuild {
     #[must_use]
     pub fn stdout<S: Into<Stdio>>(mut self, stdio: S) -> Self {
         self.stdout = Some(stdio.into());
+        self
+    }
+
+    /// Sets the strategy to executed upon building the `ResourceDir`.
+    ///
+    /// Default behavior is to clean `node_modules` directory.
+    #[must_use]
+    pub fn node_modules_strategy(mut self, node_modules_strategy: NodeModulesStrategy) -> Self {
+        self.node_modules_strategy = node_modules_strategy;
         self
     }
 
@@ -209,16 +233,94 @@ impl NpmBuild {
 
         cmd
     }
+
+    fn to_node_modules_dir(&self) -> PathBuf {
+        self.package_json_dir.join("node_modules")
+    }
+
+    fn remove_node_modules(&self) -> io::Result<()> {
+        let node_modules_dir = self.to_node_modules_dir();
+
+        if node_modules_dir.is_dir() {
+            fs::remove_dir_all(node_modules_dir)?;
+        }
+
+        Ok(())
+    }
+
+    fn move_node_modules_to_out_dir(&self) -> io::Result<PathBuf> {
+        let node_modules_dir = self.to_node_modules_dir();
+
+        if !node_modules_dir.is_dir() {
+            return Ok(node_modules_dir);
+        }
+
+        let Ok(out_node_modules_dir) =
+            env::var("OUT_DIR").map(|out_dir| PathBuf::from(out_dir).join("node_modules"))
+        else {
+            return Ok(node_modules_dir);
+        };
+
+        copy_dir_all(&node_modules_dir, &out_node_modules_dir)?;
+        fs::remove_dir_all(node_modules_dir)?;
+
+        Ok(out_node_modules_dir)
+    }
 }
 
 impl From<NpmBuild> for ResourceDir {
     fn from(mut npm_build: NpmBuild) -> Self {
+        let resource_dir = npm_build
+            .target_dir
+            .take()
+            .unwrap_or_else(|| npm_build.to_node_modules_dir());
+
+        let resource_dir = npm_build
+            .node_modules_strategy
+            .execute(resource_dir, &npm_build);
+
         Self {
-            resource_dir: npm_build
-                .target_dir
-                .take()
-                .unwrap_or_else(|| npm_build.package_json_dir.join("node_modules")),
+            resource_dir,
             ..Default::default()
         }
     }
+}
+
+#[derive(Default, Debug)]
+pub enum NodeModulesStrategy {
+    #[default]
+    Clean,
+    MoveToOutDir,
+}
+
+impl NodeModulesStrategy {
+    fn execute(&self, resource_dir: PathBuf, npm_build: &NpmBuild) -> PathBuf {
+        match self {
+            Self::Clean => {
+                npm_build
+                    .remove_node_modules()
+                    .expect("remove node_modules dir");
+            }
+            Self::MoveToOutDir => {
+                return npm_build
+                    .move_node_modules_to_out_dir()
+                    .expect("move node_modules to out dir");
+            }
+        }
+        resource_dir
+    }
+}
+
+fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+    fs::create_dir_all(&dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
 }
