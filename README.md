@@ -52,3 +52,13 @@ fn main() -> std::io::Result<()> {
     ...
 }
 ```
+
+By default, 'static-files' collects all files in operation system defined order, but you can change it by activating 'sort' feature in `Cargo.toml`:
+
+```toml
+[dependencies]
+static-files = { version = "0.2", features = ["sort"] }
+
+[build-dependencies]
+static-files = { version = "0.2", features = ["sort"] }
+```
