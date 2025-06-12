@@ -132,7 +132,26 @@ pub fn generate_resources_mapping<P: AsRef<Path>, G: AsRef<Path>>(
     Ok(())
 }
 
+#[cfg(not(feature = "sort"))]
 pub(crate) fn collect_resources<P: AsRef<Path>>(
+    path: P,
+    filter: Option<fn(p: &Path) -> bool>,
+) -> io::Result<Vec<(PathBuf, Metadata)>> {
+    collect_resources_nested(path, filter)
+}
+
+#[cfg(feature = "sort")]
+pub(crate) fn collect_resources<P: AsRef<Path>>(
+    path: P,
+    filter: Option<fn(p: &Path) -> bool>,
+) -> io::Result<Vec<(PathBuf, Metadata)>> {
+    let mut resources = collect_resources_nested(path, filter)?;
+    resources.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(resources)
+}
+
+#[inline]
+fn collect_resources_nested<P: AsRef<Path>>(
     path: P,
     filter: Option<fn(p: &Path) -> bool>,
 ) -> io::Result<Vec<(PathBuf, Metadata)>> {
@@ -171,6 +190,7 @@ pub(crate) fn generate_resource_inserts<P: AsRef<Path>, W: Write>(
     Ok(())
 }
 
+#[allow(clippy::unnecessary_debug_formatting)]
 pub(crate) fn generate_resource_insert<P: AsRef<Path>, W: Write>(
     f: &mut W,
     project_dir: &P,
