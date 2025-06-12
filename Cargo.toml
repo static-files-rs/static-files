@@ -14,7 +14,7 @@ repository = "https://github.com/static-files-rs/static-files"
 rust-version = "1.60.0"
 
 [features]
-default = ["change-detection"]
+default = ["change-detection", "sort"]
 change-detection = ["dep:change-detection"]
 sort = []
 
