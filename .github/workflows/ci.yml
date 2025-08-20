@@ -1,7 +1,9 @@
-name: Rust
+name: CI
 
 on:
   push:
+    tags:
+      - "v*"
     branches: [ main ]
   pull_request:
     branches: [ main ]
@@ -11,6 +13,7 @@ on:
 
 jobs:
   build:
+    name: Integration
 
     runs-on: ${{ matrix.os }}
     strategy:

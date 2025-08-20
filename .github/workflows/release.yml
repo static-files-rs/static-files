@@ -1,4 +1,4 @@
-name: Publish to crates.io and draft release
+name: Publish to crates.io and release on GitHub
 
 on:
   workflow_call:
