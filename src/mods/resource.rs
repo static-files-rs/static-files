@@ -218,7 +218,7 @@ pub(crate) fn generate_resource_insert<P: AsRef<Path>, W: Write>(
 pub(crate) fn generate_function_header<F: Write>(f: &mut F, fn_name: &str) -> io::Result<()> {
     writeln!(
         f,
-        "#[allow(clippy::unreadable_literal)] pub fn {fn_name}() -> ::std::collections::HashMap<&'static str, ::static_files::Resource> {{",
+        "#[allow(clippy::unreadable_literal)] #[must_use] pub fn {fn_name}() -> ::std::collections::HashMap<&'static str, ::static_files::Resource> {{",
     )
 }
 
