@@ -190,7 +190,6 @@ pub(crate) fn generate_resource_inserts<P: AsRef<Path>, W: Write>(
     Ok(())
 }
 
-#[allow(clippy::unnecessary_debug_formatting)]
 pub(crate) fn generate_resource_insert<P: AsRef<Path>, W: Write>(
     f: &mut W,
     project_dir: &P,

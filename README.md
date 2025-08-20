@@ -26,10 +26,10 @@ Add to `Cargo.toml` dependency to `static-files`:
 
 ```toml
 [dependencies]
-static-files = "0.2"
+static-files = "0.3"
 
 [build-dependencies]
-static-files = "0.2"
+static-files = "0.3"
 ```
 
 Add `build.rs` with call to bundle resources:
@@ -58,8 +58,8 @@ By default, 'static-files' collects all files in operation system defined order,
 
 ```toml
 [dependencies]
-static-files = { version = "0.2", features = ["sort"] }
+static-files = { version = "0.3", features = ["sort"] }
 
 [build-dependencies]
-static-files = { version = "0.2", features = ["sort"] }
+static-files = { version = "0.3", features = ["sort"] }
 ```
