@@ -261,6 +261,10 @@ impl NpmBuild {
             return Ok(node_modules_dir);
         };
 
+        if out_node_modules_dir.is_dir() {
+            fs::remove_dir_all(&out_node_modules_dir)?;
+        }
+
         copy_dir_all(&node_modules_dir, &out_node_modules_dir)?;
         fs::remove_dir_all(node_modules_dir)?;
 
@@ -270,14 +274,13 @@ impl NpmBuild {
 
 impl From<NpmBuild> for ResourceDir {
     fn from(mut npm_build: NpmBuild) -> Self {
+        let out_node_modules_dir = npm_build.node_modules_strategy.execute(&npm_build);
+
         let resource_dir = npm_build
             .target_dir
             .take()
+            .or(out_node_modules_dir)
             .unwrap_or_else(|| npm_build.to_node_modules_dir());
-
-        let resource_dir = npm_build
-            .node_modules_strategy
-            .execute(resource_dir, &npm_build);
 
         Self {
             resource_dir,
@@ -294,20 +297,20 @@ pub enum NodeModulesStrategy {
 }
 
 impl NodeModulesStrategy {
-    fn execute(&self, resource_dir: PathBuf, npm_build: &NpmBuild) -> PathBuf {
+    fn execute(&self, npm_build: &NpmBuild) -> Option<PathBuf> {
         match self {
             Self::Clean => {
                 npm_build
                     .remove_node_modules()
                     .expect("remove node_modules dir");
+                None
             }
-            Self::MoveToOutDir => {
-                return npm_build
+            Self::MoveToOutDir => Some(
+                npm_build
                     .move_node_modules_to_out_dir()
-                    .expect("move node_modules to out dir");
-            }
+                    .expect("move node_modules to out dir"),
+            ),
         }
-        resource_dir
     }
 }
 
